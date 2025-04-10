@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chuk-mcp-virtual-fs"
+version = "0.1.0"
+description = "MCP Virtual Filesystem"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "boto3>=1.37.31",
+    "chuk-mcp-runtime>=0.1.1",
+    "chuk-virtual-fs>=0.1.10",
+    "mcp>=1.6.0",
+    "pydantic>=2.11.2",
+    "pyyaml>=6.0.2",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/chrishayuk/chuk-mcp-s3-bucket-manager"
+"Bug Tracker" = "https://github.com/chrishayuk/chuk-mcp-s3-bucket-manager/issues"
+
+[project.scripts]
+chuk-mcp-virtual-fs = "chuk_mcp_virtual_fs.main:main"
+mcp-virtual-fs = "chuk_mcp_virtual_fs.main:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]  # Change from "." to "src"
+include = ["chuk_mcp_virtual_fs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+
+[tool.black]
+line-length = 88
+target-version = ["py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
