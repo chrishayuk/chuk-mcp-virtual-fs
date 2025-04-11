@@ -72,7 +72,7 @@ wheels = [
 
 [[package]]
 name = "chuk-mcp-runtime"
-version = "0.1.2"
+version = "0.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mcp" },
@@ -80,7 +80,7 @@ dependencies = [
     { name = "pyyaml" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/6b/1c2aea0562bf90d46a6cc9e973d808ef2e37de36a41f526ebcb86c6e03e1/chuk_mcp_runtime-0.1.2-py3-none-any.whl", hash = "sha256:773f550c7ce8abd815882558cd353acb2b75066988526df72de2ce0cf503eb36", size = 16029 },
+    { url = "https://files.pythonhosted.org/packages/77/71/0dcfbb8f6ae2a3bb02bd97df0506b74709c563f660d720d95870e41be81a/chuk_mcp_runtime-0.1.7-py3-none-any.whl", hash = "sha256:24c4bd0bda193e7d476395f3bf8ee024dc77fab2be59a1a8512d59c83d55bb1b", size = 16056 },
 ]
 
 [[package]]
@@ -104,7 +104,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.37.31" },
-    { name = "chuk-mcp-runtime", specifier = ">=0.1.1" },
+    { name = "chuk-mcp-runtime", specifier = ">=0.1.7" },
     { name = "chuk-virtual-fs", specifier = ">=0.1.10" },
     { name = "mcp", specifier = ">=1.6.0" },
     { name = "pydantic", specifier = ">=2.11.2" },

@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "boto3>=1.37.31",
-    "chuk-mcp-runtime>=0.1.1",
+    "chuk-mcp-runtime>=0.1.7",
     "chuk-virtual-fs>=0.1.10",
     "mcp>=1.6.0",
     "pydantic>=2.11.2",

@@ -1,8 +1,12 @@
 import os
 import logging
+import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-import time
+from dotenv import load_dotenv
+
+# load environment variables
+load_dotenv()
 
 # Import MCP tool decorator from your runtime
 from chuk_mcp_runtime.common.mcp_tool_decorator import mcp_tool
@@ -55,53 +59,99 @@ def get_virtual_fs(provider_type: str = None, **kwargs) -> VirtualFileSystem:
     """
     Create or retrieve a cached VirtualFileSystem instance.
     
-    Args:
-        provider_type: Type of storage provider ('local', 's3', 'memory', etc.)
-        **kwargs: Additional arguments for the VirtualFileSystem
-        
-    Returns:
-        VirtualFileSystem instance
+    Defaults to S3. If S3 fails, it falls back to the memory provider (with no extra kwargs).
     """
     global _fs_cache
-    
+
+    logger.info("Entering get_virtual_fs()")
+
+    # If no provider specified, read from env or default to 's3'
     if not provider_type:
         provider_type = os.environ.get("VIRTUAL_FS_PROVIDER", "s3")
-    
-    cache_key = f"{provider_type}:"
+    logger.info(f"Requested provider_type: {provider_type}")
+
+    def build_cache_key(prov: str, **params) -> str:
+        """Builds a cache key for S3 or memory provider based on params."""
+        if prov == "s3":
+            bucket = params.get("bucket_name", "default-bucket")
+            prefix = params.get("prefix", "default-prefix")
+            endpoint = params.get("endpoint_url", "")
+            key = f"s3:{bucket}:{prefix}:{endpoint}"
+            logger.info(f"Built S3 cache key: {key}")
+            return key
+        elif prov == "memory":
+            # MemoryStorageProvider doesn't accept memory_id in your setup, so skip it
+            logger.info("Built memory cache key: memory")
+            return "memory"
+        else:
+            logger.info(f"Built fallback provider key: {prov}")
+            return prov
+
+    # If the intended provider is s3, fill missing kwargs from env
     if provider_type == "s3":
-        bucket = kwargs.get("bucket_name") or os.environ.get("S3_BUCKET_NAME", "default-bucket")
-        prefix = kwargs.get("prefix") or os.environ.get("S3_PREFIX", "default-prefix")
-        endpoint = kwargs.get("endpoint_url") or os.environ.get("AWS_ENDPOINT_URL_S3", "")
-        cache_key += f"{bucket}:{prefix}:{endpoint}"
-    elif provider_type == "local":
-        root_dir = kwargs.get("root_dir") or os.environ.get("LOCAL_FS_ROOT", "/tmp/virtual_fs")
-        cache_key += f"{root_dir}"
-    elif provider_type == "memory":
-        memory_id = kwargs.get("memory_id") or os.environ.get("MEMORY_FS_ID", "default")
-        cache_key += f"{memory_id}"
-    
+        bucket_env = os.environ.get("S3_BUCKET_NAME", "my-virtual-fs")
+        prefix_env = os.environ.get("S3_PREFIX", "default")
+        endpoint_env = os.environ.get("AWS_ENDPOINT_URL_S3", "")
+        region_env = os.environ.get("AWS_REGION", "us-east-1")
+
+        if "bucket_name" not in kwargs:
+            kwargs["bucket_name"] = bucket_env
+        if "prefix" not in kwargs:
+            kwargs["prefix"] = prefix_env
+        if "endpoint_url" not in kwargs and endpoint_env:
+            kwargs["endpoint_url"] = endpoint_env
+
+        # Replace "auto" region with a valid region
+        kwargs["region_name"] = kwargs.get("region_name", region_env)
+
+        logger.info(
+            "S3 provider params: "
+            f"bucket_name={kwargs['bucket_name']}, prefix={kwargs['prefix']}, "
+            f"endpoint_url={kwargs.get('endpoint_url')}, region_name={kwargs['region_name']}"
+        )
+
+    cache_key = build_cache_key(provider_type, **kwargs)
+
+    # Check if filesystem instance is already cached
     if cache_key in _fs_cache:
+        logger.info(f"Returning cached VirtualFileSystem for key: {cache_key}")
         return _fs_cache[cache_key]
-    
+
+    # Try creating the filesystem
+    logger.info(f"Creating VirtualFileSystem with provider '{provider_type}', kwargs={kwargs}")
     try:
-        if provider_type == "s3":
-            if "bucket_name" not in kwargs:
-                kwargs["bucket_name"] = os.environ.get("S3_BUCKET_NAME", "my-virtual-fs")
-            if "prefix" not in kwargs:
-                kwargs["prefix"] = os.environ.get("S3_PREFIX", "default")
-            if "endpoint_url" not in kwargs and "AWS_ENDPOINT_URL_S3" in os.environ:
-                kwargs["endpoint_url"] = os.environ.get("AWS_ENDPOINT_URL_S3")
-            if "region_name" not in kwargs:
-                kwargs["region_name"] = os.environ.get("AWS_REGION", "us-east-1")
-        elif provider_type == "local":
-            if "root_dir" not in kwargs:
-                kwargs["root_dir"] = os.environ.get("LOCAL_FS_ROOT", "/tmp/virtual_fs")
         fs = VirtualFileSystem(provider_type, **kwargs)
         _fs_cache[cache_key] = fs
+        logger.info(f"Successfully created filesystem '{provider_type}' with cache key '{cache_key}'")
         return fs
+
     except Exception as e:
-        logger.error(f"Error creating VirtualFileSystem: {e}")
-        raise ValueError(f"Error creating VirtualFileSystem: {e}")
+        logger.error(f"Error creating VirtualFileSystem for provider '{provider_type}': {e}")
+
+        # If S3 fails, fallback to memory with no extra arguments
+        if provider_type == "s3":
+            logger.info("Attempting fallback to memory provider (no extra arguments).")
+            fallback_provider = "memory"
+            fallback_cache_key = build_cache_key(fallback_provider)
+            
+            if fallback_cache_key in _fs_cache:
+                logger.info(f"Falling back to existing cached memory filesystem with key: {fallback_cache_key}")
+                return _fs_cache[fallback_cache_key]
+            
+            try:
+                fs = VirtualFileSystem(fallback_provider)
+                _fs_cache[fallback_cache_key] = fs
+                logger.info("Fell back to new memory provider successfully.")
+                return fs
+            except Exception as mem_e:
+                logger.error(f"Error falling back to memory provider: {mem_e}")
+                raise ValueError(
+                    f"Error creating VirtualFileSystem: S3 error ({e}) "
+                    f"and fallback (memory) error ({mem_e})"
+                )
+        else:
+            raise ValueError(f"Error creating VirtualFileSystem: {e}")
+
 
 def get_snapshot_manager(fs: VirtualFileSystem) -> SnapshotManager:
     """Create and return a SnapshotManager for the given filesystem, caching it per fs instance."""
@@ -273,13 +323,41 @@ def _node_to_info(path: str, node: Any) -> FileSystemNodeInfo:
         metadata=node.metadata if hasattr(node, "metadata") else {}
     )
 
+def resolve_path(user_path: str) -> str:
+    """
+    Convert relative or empty paths (like '.' or './') to '/'
+    and ensure there's always a leading slash for S3-based listings.
+    """
+    if not user_path or user_path in (".", "./"):
+        return "/"
+
+    # Strip a leading "./", if present
+    if user_path.startswith("./"):
+        user_path = user_path[2:]
+
+    # Ensure leading slash so that e.g. "todo.md" -> "/todo.md"
+    if not user_path.startswith("/"):
+        user_path = "/" + user_path
+
+    return user_path
+
+
 @mcp_tool(name="list_directory", description="List contents of a directory")
 def list_directory(path: str, recursive: bool = False) -> dict:
-    """List contents of a directory in the virtual filesystem."""
+    """
+    List contents of a directory in the virtual filesystem.
+    Interprets '.' (or './') as '/', so listing the 'current directory'
+    effectively lists the top-level of the S3 prefix.
+    """
     fs = get_virtual_fs()
     try:
-        input_data = ListDirectoryInput(path=path, recursive=recursive)
+        # Normalize the user-supplied path
+        resolved_path = resolve_path(path)
+
+        input_data = ListDirectoryInput(path=resolved_path, recursive=recursive)
+
         if input_data.recursive:
+            # Recursively find all paths
             paths = fs.find(input_data.path, recursive=True)
             nodes = []
             for p in paths:
@@ -287,18 +365,23 @@ def list_directory(path: str, recursive: bool = False) -> dict:
                 if node_info:
                     nodes.append(_node_to_info(p, node_info))
         else:
+            # Non-recursive listing
             items = fs.ls(input_data.path)
             nodes = []
             for item in items:
+                # Build the absolute path to this item
                 item_path = os.path.join(input_data.path, item).replace("\\", "/")
                 node_info = fs.get_node_info(item_path)
                 if node_info:
                     nodes.append(_node_to_info(item_path, node_info))
+
         result = ListDirectoryResult(nodes=nodes)
         return result.model_dump()
+
     except Exception as e:
         logger.error(f"Error listing directory {path}: {e}")
         raise ValueError(f"Error listing directory: {e}")
+
 
 @mcp_tool(name="read_file", description="Read file content from the filesystem")
 def read_file(path: str, encoding: str = "utf-8") -> dict:
