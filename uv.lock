@@ -105,7 +105,7 @@ dev = [
 requires-dist = [
     { name = "boto3", specifier = ">=1.37.31" },
     { name = "chuk-mcp-runtime", specifier = ">=0.1.7" },
-    { name = "chuk-virtual-fs", specifier = ">=0.1.10" },
+    { name = "chuk-virtual-fs", specifier = ">=0.1.11" },
     { name = "mcp", specifier = ">=1.6.0" },
     { name = "pydantic", specifier = ">=2.11.2" },
     { name = "pyyaml", specifier = ">=6.0.2" },
@@ -116,16 +116,16 @@ dev = [{ name = "pytest", specifier = ">=8.3.5" }]
 
 [[package]]
 name = "chuk-virtual-fs"
-version = "0.1.10"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "e2b-code-interpreter" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/ef/cdae833e5f23544bd02dd2d62a51e566a3ebdf1ea90b344e1558359acc5d/chuk_virtual_fs-0.1.10.tar.gz", hash = "sha256:ee7e49386c3869424c8b8a87b1947d691e425e8b5448a7e380e575b6a1d6cbe3", size = 65686 }
+sdist = { url = "https://files.pythonhosted.org/packages/59/fc/16411012da33f9a4da0dcc694e6bc531e4379505c48bf174de97e52481e2/chuk_virtual_fs-0.1.11.tar.gz", hash = "sha256:dd67a83c3711d9524b80f8361772d71390a906dd2e08ec8ba24900d2f6f97749", size = 67795 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/67/41084152eb04600ef60c36bbf670458aa29fb99e963670343e77715a4ab1/chuk_virtual_fs-0.1.10-py3-none-any.whl", hash = "sha256:3053818673228297b09a18ddece61b1c6ef9cca2e76bff723a61709a50bd2967", size = 55039 },
+    { url = "https://files.pythonhosted.org/packages/7b/8d/e6c505dc2d1982452097dc93712b138d1ab22263f1eedfd30d9423618ef0/chuk_virtual_fs-0.1.11-py3-none-any.whl", hash = "sha256:afb67d33d08da922c091d719e8eb8cd5722930edff6a7d7dfeb0865c6906aa3c", size = 56953 },
 ]
 
 [[package]]
